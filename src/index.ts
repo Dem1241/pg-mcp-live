@@ -5,6 +5,7 @@ import { registerPostgresResources } from "./resources/registerPostgresResources
 import { createMcpServer } from "./server/createMcpServer.js";
 import { registerCheckDatabaseConnectionTool } from "./tools/registerCheckDatabaseConnectionTool.js";
 import { registerDescribeTableTool } from "./tools/registerDescribeTableTool.js";
+import { registerExplainQueryTool } from "./tools/registerExplainQueryTool.js";
 import { registerGetTableSampleTool } from "./tools/registerGetTableSampleTool.js";
 import { registerListSchemasTool } from "./tools/registerListSchemasTool.js";
 import { registerListTablesTool } from "./tools/registerListTablesTool.js";
@@ -46,6 +47,7 @@ async function main() {
   registerDescribeTableTool(server);
   registerGetTableSampleTool(server);
   registerRunSelectQueryTool(server);
+  registerExplainQueryTool(server);
 
   registerPostgresResources(server);
 
