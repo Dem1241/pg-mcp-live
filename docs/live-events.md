@@ -1,0 +1,50 @@
+# Live events
+
+`pg-mcp-live` can listen for PostgreSQL notifications through the `wait_for_notification` tool.
+
+The demo database includes an optional trigger script that emits a notification whenever a row changes in one of the demo tables.
+
+## Install demo triggers
+
+    docker exec -i pg-mcp-live-postgres psql -U pgmcp -d pg_mcp_live_demo < examples/live-events.sql
+
+## Remove demo triggers
+
+    docker exec -i pg-mcp-live-postgres psql -U pgmcp -d pg_mcp_live_demo < examples/remove-live-events.sql
+
+## Notification channel
+
+The default channel is:
+
+    pg_mcp_live_events
+
+## Example table change
+
+    UPDATE inventory
+    SET quantity = quantity - 1,
+        updated_at = NOW()
+    WHERE product_id = 1;
+
+## Example notification payload
+
+    {
+      "event": "table_change",
+      "operation": "UPDATE",
+      "schema": "public",
+      "table": "inventory",
+      "changedAt": "2026-05-14T12:00:00.000Z",
+      "oldRow": {
+        "product_id": 1,
+        "quantity": 25
+      },
+      "newRow": {
+        "product_id": 1,
+        "quantity": 24
+      }
+    }
+
+## Notes
+
+PostgreSQL notification payloads have a size limit. This demo trigger includes full row data because the demo rows are small.
+
+A production setup should usually send compact event data, such as table name, primary key, operation, and timestamp.
