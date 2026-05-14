@@ -11,6 +11,9 @@ The goal is simple: give MCP-compatible clients useful database context without 
 - PostgreSQL schema introspection
 - table and column metadata
 - primary key and foreign key detection
+- index metadata
+- unique and check constraint metadata
+- table size and row estimates
 - safe sample row previews
 - read-only SELECT query execution
 - PostgreSQL EXPLAIN plans
@@ -26,7 +29,7 @@ The goal is simple: give MCP-compatible clients useful database context without 
 | `check_database_connection` | Tests the PostgreSQL connection |
 | `list_schemas` | Lists exposed schemas |
 | `list_tables` | Lists tables in exposed schemas |
-| `describe_table` | Returns columns, primary keys, and foreign keys for a table |
+| `describe_table` | Returns columns, keys, constraints, indexes, and table stats |
 | `get_table_sample` | Returns a limited sample of rows from a table |
 | `run_select_query` | Runs a guarded read-only SELECT query |
 | `explain_query` | Returns a PostgreSQL EXPLAIN plan for a guarded query |
@@ -37,7 +40,7 @@ The goal is simple: give MCP-compatible clients useful database context without 
 | --- | --- |
 | `postgres://schemas` | Lists exposed schemas |
 | `postgres://schema/{schemaName}` | Lists tables in a schema |
-| `postgres://table/{schemaName}/{tableName}` | Returns table metadata |
+| `postgres://table/{schemaName}/{tableName}` | Returns table metadata, indexes, constraints, and stats |
 
 ## Safety model
 

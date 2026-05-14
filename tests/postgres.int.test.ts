@@ -73,6 +73,70 @@ describe("PostgreSQL integration", () => {
     );
   });
 
+  it("describes indexes for a table", async () => {
+    const table = await describeTable("public", "order_items");
+
+    expect(table.indexes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          indexName: "order_items_pkey",
+          isPrimary: true,
+          isUnique: true,
+          columnNames: ["id"],
+        }),
+        expect.objectContaining({
+          indexName: "idx_order_items_order_id",
+          isPrimary: false,
+          columnNames: ["order_id"],
+        }),
+        expect.objectContaining({
+          indexName: "idx_order_items_product_id",
+          isPrimary: false,
+          columnNames: ["product_id"],
+        }),
+      ]),
+    );
+  });
+
+  it("describes unique constraints", async () => {
+    const table = await describeTable("public", "products");
+
+    expect(table.uniqueConstraints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          columnNames: ["sku"],
+        }),
+      ]),
+    );
+  });
+
+  it("describes check constraints", async () => {
+    const products = await describeTable("public", "products");
+    const orderItems = await describeTable("public", "order_items");
+
+    expect(products.checkConstraints.length).toBeGreaterThan(0);
+    expect(orderItems.checkConstraints.length).toBeGreaterThan(0);
+
+    expect(products.checkConstraints.map((constraint) => constraint.definition).join("\n")).toContain(
+      "price_cents",
+    );
+
+    expect(orderItems.checkConstraints.map((constraint) => constraint.definition).join("\n")).toContain(
+      "quantity",
+    );
+  });
+
+  it("returns table stats", async () => {
+    const table = await describeTable("public", "products");
+
+    expect(table.stats).not.toBeNull();
+    expect(table.stats?.estimatedRowCount).toBeGreaterThanOrEqual(0);
+    expect(table.stats?.tableSizeBytes).toBeGreaterThanOrEqual(0);
+    expect(table.stats?.indexSizeBytes).toBeGreaterThanOrEqual(0);
+    expect(table.stats?.totalSizeBytes).toBeGreaterThanOrEqual(0);
+    expect(table.stats?.totalSize).toEqual(expect.any(String));
+  });
+
   it("returns a safe table sample", async () => {
     const sample = await getTableSample("public", "products", 3);
 

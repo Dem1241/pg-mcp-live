@@ -31,12 +31,42 @@ export type ForeignKey = {
   foreignColumnName: string;
 };
 
+export type TableIndex = {
+  indexName: string;
+  columnNames: string[];
+  isUnique: boolean;
+  isPrimary: boolean;
+  definition: string;
+};
+
+export type UniqueConstraint = {
+  constraintName: string;
+  columnNames: string[];
+};
+
+export type CheckConstraint = {
+  constraintName: string;
+  definition: string;
+};
+
+export type TableStats = {
+  estimatedRowCount: number;
+  tableSizeBytes: number;
+  indexSizeBytes: number;
+  totalSizeBytes: number;
+  totalSize: string;
+};
+
 export type TableDescription = {
   schemaName: string;
   tableName: string;
   columns: TableColumn[];
   primaryKeyColumns: string[];
   foreignKeys: ForeignKey[];
+  indexes: TableIndex[];
+  uniqueConstraints: UniqueConstraint[];
+  checkConstraints: CheckConstraint[];
+  stats: TableStats | null;
 };
 
 type SchemaRow = {
@@ -72,6 +102,49 @@ type ForeignKeyRow = {
   foreign_table_name: string;
   foreign_column_name: string;
 };
+
+type IndexRow = {
+  index_name: string;
+  column_names: string[] | string | null;
+  is_unique: boolean;
+  is_primary: boolean;
+  index_definition: string;
+};
+
+type UniqueConstraintRow = {
+  constraint_name: string;
+  column_names: string[] | string | null;
+};
+
+type CheckConstraintRow = {
+  constraint_name: string;
+  definition: string;
+};
+
+type TableStatsRow = {
+  estimated_row_count: string | number;
+  table_size_bytes: string | number;
+  index_size_bytes: string | number;
+  total_size_bytes: string | number;
+  total_size: string;
+};
+
+function normalizeColumnNames(columnNames: string[] | string | null): string[] {
+  if (!columnNames) {
+    return [];
+  }
+
+  if (Array.isArray(columnNames)) {
+    return columnNames;
+  }
+
+  return columnNames
+    .replace(/^\{/, "")
+    .replace(/\}$/, "")
+    .split(",")
+    .map((columnName) => columnName.trim().replace(/^"|"$/g, ""))
+    .filter(Boolean);
+}
 
 function ensureSchemaIsAllowed(schemaName: string) {
   if (!env.PG_MCP_ALLOWED_SCHEMAS.includes(schemaName)) {
@@ -142,14 +215,8 @@ async function assertTableExists(schemaName: string, tableName: string) {
   }
 }
 
-export async function describeTable(
-  schemaName: string,
-  tableName: string,
-): Promise<TableDescription> {
-  ensureSchemaIsAllowed(schemaName);
-  await assertTableExists(schemaName, tableName);
-
-  const columnsResult = await pool.query<ColumnRow>(
+async function getColumns(schemaName: string, tableName: string): Promise<TableColumn[]> {
+  const result = await pool.query<ColumnRow>(
     `
       SELECT
         column_name,
@@ -169,7 +236,21 @@ export async function describeTable(
     [schemaName, tableName],
   );
 
-  const primaryKeyResult = await pool.query<PrimaryKeyRow>(
+  return result.rows.map((row) => ({
+    columnName: row.column_name,
+    ordinalPosition: row.ordinal_position,
+    dataType: row.data_type,
+    udtName: row.udt_name,
+    isNullable: row.is_nullable === "YES",
+    columnDefault: row.column_default,
+    characterMaximumLength: row.character_maximum_length,
+    numericPrecision: row.numeric_precision,
+    numericScale: row.numeric_scale,
+  }));
+}
+
+async function getPrimaryKeyColumns(schemaName: string, tableName: string): Promise<string[]> {
+  const result = await pool.query<PrimaryKeyRow>(
     `
       SELECT kcu.column_name
       FROM information_schema.table_constraints tc
@@ -185,7 +266,11 @@ export async function describeTable(
     [schemaName, tableName],
   );
 
-  const foreignKeysResult = await pool.query<ForeignKeyRow>(
+  return result.rows.map((row) => row.column_name);
+}
+
+async function getForeignKeys(schemaName: string, tableName: string): Promise<ForeignKey[]> {
+  const result = await pool.query<ForeignKeyRow>(
     `
       SELECT
         tc.constraint_name,
@@ -209,27 +294,195 @@ export async function describeTable(
     [schemaName, tableName],
   );
 
+  return result.rows.map((row) => ({
+    constraintName: row.constraint_name,
+    columnName: row.column_name,
+    foreignTableSchema: row.foreign_table_schema,
+    foreignTableName: row.foreign_table_name,
+    foreignColumnName: row.foreign_column_name,
+  }));
+}
+
+async function getIndexes(schemaName: string, tableName: string): Promise<TableIndex[]> {
+  const result = await pool.query<IndexRow>(
+    `
+      SELECT
+        index_class.relname AS index_name,
+        COALESCE(
+          array_agg(attribute.attname ORDER BY index_keys.ordinality)
+            FILTER (WHERE attribute.attname IS NOT NULL),
+          '{}'
+        ) AS column_names,
+        pg_index.indisunique AS is_unique,
+        pg_index.indisprimary AS is_primary,
+        pg_get_indexdef(pg_index.indexrelid) AS index_definition
+      FROM pg_index
+      JOIN pg_class table_class
+        ON table_class.oid = pg_index.indrelid
+      JOIN pg_namespace table_namespace
+        ON table_namespace.oid = table_class.relnamespace
+      JOIN pg_class index_class
+        ON index_class.oid = pg_index.indexrelid
+      LEFT JOIN LATERAL unnest(pg_index.indkey) WITH ORDINALITY AS index_keys(attnum, ordinality)
+        ON true
+      LEFT JOIN pg_attribute attribute
+        ON attribute.attrelid = table_class.oid
+        AND attribute.attnum = index_keys.attnum
+      WHERE table_namespace.nspname = $1
+        AND table_class.relname = $2
+      GROUP BY
+        index_class.relname,
+        pg_index.indisunique,
+        pg_index.indisprimary,
+        pg_index.indexrelid
+      ORDER BY index_class.relname;
+    `,
+    [schemaName, tableName],
+  );
+
+  return result.rows.map((row) => ({
+    indexName: row.index_name,
+    columnNames: normalizeColumnNames(row.column_names),
+    isUnique: row.is_unique,
+    isPrimary: row.is_primary,
+    definition: row.index_definition,
+  }));
+}
+
+async function getUniqueConstraints(
+  schemaName: string,
+  tableName: string,
+): Promise<UniqueConstraint[]> {
+  const result = await pool.query<UniqueConstraintRow>(
+    `
+      SELECT
+        pg_constraint.conname AS constraint_name,
+        COALESCE(
+          array_agg(attribute.attname ORDER BY constraint_keys.ordinality)
+            FILTER (WHERE attribute.attname IS NOT NULL),
+          '{}'
+        ) AS column_names
+      FROM pg_constraint
+      JOIN pg_class table_class
+        ON table_class.oid = pg_constraint.conrelid
+      JOIN pg_namespace table_namespace
+        ON table_namespace.oid = table_class.relnamespace
+      LEFT JOIN LATERAL unnest(pg_constraint.conkey) WITH ORDINALITY AS constraint_keys(attnum, ordinality)
+        ON true
+      LEFT JOIN pg_attribute attribute
+        ON attribute.attrelid = table_class.oid
+        AND attribute.attnum = constraint_keys.attnum
+      WHERE table_namespace.nspname = $1
+        AND table_class.relname = $2
+        AND pg_constraint.contype = 'u'
+      GROUP BY pg_constraint.conname
+      ORDER BY pg_constraint.conname;
+    `,
+    [schemaName, tableName],
+  );
+
+  return result.rows.map((row) => ({
+    constraintName: row.constraint_name,
+    columnNames: normalizeColumnNames(row.column_names),
+  }));
+}
+
+async function getCheckConstraints(
+  schemaName: string,
+  tableName: string,
+): Promise<CheckConstraint[]> {
+  const result = await pool.query<CheckConstraintRow>(
+    `
+      SELECT
+        pg_constraint.conname AS constraint_name,
+        pg_get_constraintdef(pg_constraint.oid, true) AS definition
+      FROM pg_constraint
+      JOIN pg_class table_class
+        ON table_class.oid = pg_constraint.conrelid
+      JOIN pg_namespace table_namespace
+        ON table_namespace.oid = table_class.relnamespace
+      WHERE table_namespace.nspname = $1
+        AND table_class.relname = $2
+        AND pg_constraint.contype = 'c'
+      ORDER BY pg_constraint.conname;
+    `,
+    [schemaName, tableName],
+  );
+
+  return result.rows.map((row) => ({
+    constraintName: row.constraint_name,
+    definition: row.definition,
+  }));
+}
+
+async function getTableStats(schemaName: string, tableName: string): Promise<TableStats | null> {
+  const result = await pool.query<TableStatsRow>(
+    `
+      SELECT
+        GREATEST(table_class.reltuples::bigint, 0) AS estimated_row_count,
+        pg_relation_size(table_class.oid) AS table_size_bytes,
+        pg_indexes_size(table_class.oid) AS index_size_bytes,
+        pg_total_relation_size(table_class.oid) AS total_size_bytes,
+        pg_size_pretty(pg_total_relation_size(table_class.oid)) AS total_size
+      FROM pg_class table_class
+      JOIN pg_namespace table_namespace
+        ON table_namespace.oid = table_class.relnamespace
+      WHERE table_namespace.nspname = $1
+        AND table_class.relname = $2
+        AND table_class.relkind = 'r';
+    `,
+    [schemaName, tableName],
+  );
+
+  const row = result.rows[0];
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    estimatedRowCount: Number(row.estimated_row_count),
+    tableSizeBytes: Number(row.table_size_bytes),
+    indexSizeBytes: Number(row.index_size_bytes),
+    totalSizeBytes: Number(row.total_size_bytes),
+    totalSize: row.total_size,
+  };
+}
+
+export async function describeTable(
+  schemaName: string,
+  tableName: string,
+): Promise<TableDescription> {
+  ensureSchemaIsAllowed(schemaName);
+  await assertTableExists(schemaName, tableName);
+
+  const [
+    columns,
+    primaryKeyColumns,
+    foreignKeys,
+    indexes,
+    uniqueConstraints,
+    checkConstraints,
+    stats,
+  ] = await Promise.all([
+    getColumns(schemaName, tableName),
+    getPrimaryKeyColumns(schemaName, tableName),
+    getForeignKeys(schemaName, tableName),
+    getIndexes(schemaName, tableName),
+    getUniqueConstraints(schemaName, tableName),
+    getCheckConstraints(schemaName, tableName),
+    getTableStats(schemaName, tableName),
+  ]);
+
   return {
     schemaName,
     tableName,
-    columns: columnsResult.rows.map((row) => ({
-      columnName: row.column_name,
-      ordinalPosition: row.ordinal_position,
-      dataType: row.data_type,
-      udtName: row.udt_name,
-      isNullable: row.is_nullable === "YES",
-      columnDefault: row.column_default,
-      characterMaximumLength: row.character_maximum_length,
-      numericPrecision: row.numeric_precision,
-      numericScale: row.numeric_scale,
-    })),
-    primaryKeyColumns: primaryKeyResult.rows.map((row) => row.column_name),
-    foreignKeys: foreignKeysResult.rows.map((row) => ({
-      constraintName: row.constraint_name,
-      columnName: row.column_name,
-      foreignTableSchema: row.foreign_table_schema,
-      foreignTableName: row.foreign_table_name,
-      foreignColumnName: row.foreign_column_name,
-    })),
+    columns,
+    primaryKeyColumns,
+    foreignKeys,
+    indexes,
+    uniqueConstraints,
+    checkConstraints,
+    stats,
   };
 }

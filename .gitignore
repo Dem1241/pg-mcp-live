@@ -6,3 +6,7 @@ coverage
 .vscode
 .idea
 *.log
+
+# Generated test artifacts
+tests/**/*.js
+tests/**/*.d.ts
