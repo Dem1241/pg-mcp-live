@@ -44,3 +44,16 @@ The query engine blocks write, admin, destructive, multi-statement, and row-lock
 Returns a PostgreSQL EXPLAIN plan for a guarded SELECT query.
 
 This does not use `EXPLAIN ANALYZE`, so the query is planned but not executed.
+
+## `summarize_relationships`
+
+Returns a compact foreign-key relationship map for exposed schemas.
+
+Example graph lines:
+
+    public.customers.id -> public.orders.customer_id
+    public.orders.id -> public.order_items.order_id
+    public.products.id -> public.inventory.product_id
+    public.products.id -> public.order_items.product_id
+
+This is useful when an MCP client needs to understand the database graph quickly.

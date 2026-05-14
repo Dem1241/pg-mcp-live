@@ -33,6 +33,7 @@ The goal is simple: give MCP-compatible clients useful database context without 
 | `get_table_sample` | Returns sample rows |
 | `run_select_query` | Runs a guarded read-only SELECT query |
 | `explain_query` | Returns a PostgreSQL EXPLAIN plan |
+| `summarize_relationships` | Returns a compact foreign-key relationship map |
 
 See [`docs/tools.md`](docs/tools.md) for detailed tool behavior.
 

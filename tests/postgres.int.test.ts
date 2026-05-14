@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { explainSafeSelectQuery } from "../src/db/explainQuery.js";
 import { checkDatabaseHealth } from "../src/db/health.js";
 import { describeTable, listSchemas, listTables } from "../src/db/introspection.js";
+import { summarizeRelationships } from "../src/db/relationships.js";
 import { closePool } from "../src/db/pool.js";
 import { getTableSample } from "../src/db/sampleRows.js";
 import { runSafeSelectQuery } from "../src/db/safeQuery.js";
@@ -135,6 +136,33 @@ describe("PostgreSQL integration", () => {
     expect(table.stats?.indexSizeBytes).toBeGreaterThanOrEqual(0);
     expect(table.stats?.totalSizeBytes).toBeGreaterThanOrEqual(0);
     expect(table.stats?.totalSize).toEqual(expect.any(String));
+  });
+
+  it("summarizes database relationships", async () => {
+    const summary = await summarizeRelationships("public");
+
+    expect(summary.schemas).toEqual(["public"]);
+    expect(summary.relationshipCount).toBeGreaterThanOrEqual(4);
+
+    expect(summary.graphLines).toEqual(
+      expect.arrayContaining([
+        "public.customers.id -> public.orders.customer_id",
+        "public.orders.id -> public.order_items.order_id",
+        "public.products.id -> public.inventory.product_id",
+        "public.products.id -> public.order_items.product_id",
+      ]),
+    );
+
+    expect(summary.relationships).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceTableName: "orders",
+          sourceColumnName: "customer_id",
+          targetTableName: "customers",
+          targetColumnName: "id",
+        }),
+      ]),
+    );
   });
 
   it("returns a safe table sample", async () => {
