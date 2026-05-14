@@ -9,6 +9,7 @@ import { waitForNotification } from "../src/db/notifications.js";
 import { closePool, pool } from "../src/db/pool.js";
 import { getTableSample } from "../src/db/sampleRows.js";
 import { getRecentEvents } from "../src/db/recentEvents.js";
+import { summarizeRecentActivity } from "../src/db/eventActivity.js";
 import { runSafeSelectQuery } from "../src/db/safeQuery.js";
 
 describe("PostgreSQL integration", () => {
@@ -165,6 +166,68 @@ describe("PostgreSQL integration", () => {
           targetColumnName: "id",
         }),
       ]),
+    );
+  });
+
+  it("summarizes recent table-change activity", async () => {
+    const eventLogSql = await readFile(
+      new URL("../examples/event-log.sql", import.meta.url),
+      "utf8",
+    );
+
+    await pool.query(eventLogSql);
+    await pool.query("TRUNCATE TABLE pg_mcp_live_event_log RESTART IDENTITY");
+
+    await pool.query(
+      `
+        UPDATE inventory
+        SET quantity = quantity - 1,
+            updated_at = NOW()
+        WHERE product_id = 1;
+      `,
+    );
+
+    await pool.query(
+      `
+        UPDATE inventory
+        SET quantity = quantity - 1,
+            updated_at = NOW()
+        WHERE product_id = 1;
+      `,
+    );
+
+    const summary = await summarizeRecentActivity({
+      schemaName: "public",
+      tableName: "inventory",
+      operation: "UPDATE",
+      sinceMinutes: 60,
+      limit: 5,
+    });
+
+    expect(summary.totalEvents).toBeGreaterThanOrEqual(2);
+    expect(summary.byTable).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          schemaName: "public",
+          tableName: "inventory",
+          updateCount: expect.any(Number),
+        }),
+      ]),
+    );
+    expect(summary.byOperation).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: "UPDATE",
+        }),
+      ]),
+    );
+    expect(summary.latestEvents.length).toBeGreaterThan(0);
+    expect(summary.latestEvents[0]).toEqual(
+      expect.objectContaining({
+        operation: "UPDATE",
+        schemaName: "public",
+        tableName: "inventory",
+      }),
     );
   });
 

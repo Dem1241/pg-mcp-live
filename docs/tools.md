@@ -92,3 +92,29 @@ Example use:
     Show recent changes in the public schema.
 
 This tool requires the event log setup from `examples/event-log.sql`.
+
+## `summarize_recent_activity`
+
+Summarizes recent table-change events from `pg_mcp_live_event_log`.
+
+Optional filters:
+
+    schemaName
+    tableName
+    operation
+    sinceMinutes
+    limit
+
+The result includes:
+
+    totalEvents
+    byTable
+    byOperation
+    latestEvents
+
+Example use cases:
+
+    What changed in the last hour?
+    Which tables had the most activity?
+    Show recent inventory updates.
+    Summarize recent UPDATE events.
