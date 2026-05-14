@@ -8,6 +8,7 @@ import { registerGetTableSampleTool } from "./tools/registerGetTableSampleTool.j
 import { registerListSchemasTool } from "./tools/registerListSchemasTool.js";
 import { registerListTablesTool } from "./tools/registerListTablesTool.js";
 import { registerPingTool } from "./tools/registerPingTool.js";
+import { registerRunSelectQueryTool } from "./tools/registerRunSelectQueryTool.js";
 
 function setupShutdownHandlers() {
   const shutdown = async (signal: string) => {
@@ -43,6 +44,7 @@ async function main() {
   registerListTablesTool(server);
   registerDescribeTableTool(server);
   registerGetTableSampleTool(server);
+  registerRunSelectQueryTool(server);
 
   const transport = new StdioServerTransport();
 
