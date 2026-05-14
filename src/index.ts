@@ -1,6 +1,7 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 import { closePool } from "./db/pool.js";
+import { registerPostgresResources } from "./resources/registerPostgresResources.js";
 import { createMcpServer } from "./server/createMcpServer.js";
 import { registerCheckDatabaseConnectionTool } from "./tools/registerCheckDatabaseConnectionTool.js";
 import { registerDescribeTableTool } from "./tools/registerDescribeTableTool.js";
@@ -45,6 +46,8 @@ async function main() {
   registerDescribeTableTool(server);
   registerGetTableSampleTool(server);
   registerRunSelectQueryTool(server);
+
+  registerPostgresResources(server);
 
   const transport = new StdioServerTransport();
 
