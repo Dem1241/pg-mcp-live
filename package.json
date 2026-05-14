@@ -1,6 +1,6 @@
 {
   "name": "pg-mcp-live",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A safe MCP server for inspecting, querying, and monitoring PostgreSQL databases.",
   "main": "dist/index.js",
   "scripts": {
@@ -11,8 +11,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
     "test:watch": "vitest"
   },
-  "keywords": [],
-  "author": "",
+  "author": "Dem1241",
   "license": "MIT",
   "type": "module",
   "dependencies": {
@@ -27,5 +26,25 @@
     "tsx": "^4.21.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.6"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dem1241/pg-mcp-live.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Dem1241/pg-mcp-live/issues"
+  },
+  "homepage": "https://github.com/Dem1241/pg-mcp-live#readme",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "postgresql",
+    "postgres",
+    "typescript",
+    "ai-tools",
+    "developer-tools",
+    "database",
+    "database-introspection",
+    "read-only"
+  ]
 }
