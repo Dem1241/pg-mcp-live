@@ -164,16 +164,16 @@ function ensureAllowedLeadingKeyword(sql: string) {
 function ensureNoForbiddenKeywords(sql: string) {
   const sanitized = sanitizeSqlForKeywordScanning(sql).toUpperCase();
 
+  if (/\bFOR\s+(UPDATE|NO\s+KEY\s+UPDATE|SHARE|KEY\s+SHARE)\b/i.test(sanitized)) {
+    throw new Error("Row-locking clauses are not allowed.");
+  }
+
   for (const keyword of FORBIDDEN_SQL_KEYWORDS) {
     const pattern = new RegExp(`\\b${keyword}\\b`, "i");
 
     if (pattern.test(sanitized)) {
       throw new Error(`Forbidden SQL keyword detected: ${keyword}`);
     }
-  }
-
-  if (/\bFOR\s+(UPDATE|NO\s+KEY\s+UPDATE|SHARE|KEY\s+SHARE)\b/i.test(sanitized)) {
-    throw new Error("Row-locking clauses are not allowed.");
   }
 
   if (/\$\d+\b/.test(sanitized)) {
