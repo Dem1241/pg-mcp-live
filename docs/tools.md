@@ -57,3 +57,19 @@ Example graph lines:
     public.products.id -> public.order_items.product_id
 
 This is useful when an MCP client needs to understand the database graph quickly.
+
+## `wait_for_notification`
+
+Waits for the next PostgreSQL notification on a channel.
+
+Default channel:
+
+    pg_mcp_live_events
+
+Example payload sent from PostgreSQL:
+
+    SELECT pg_notify('pg_mcp_live_events', '{"event":"inventory_changed","productId":1}');
+
+The tool returns either the notification or a timeout result.
+
+This is the first live-event building block. Later features can build on it for table-change monitoring, event history, and Kafka bridging.

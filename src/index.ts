@@ -12,6 +12,7 @@ import { registerListTablesTool } from "./tools/registerListTablesTool.js";
 import { registerPingTool } from "./tools/registerPingTool.js";
 import { registerRunSelectQueryTool } from "./tools/registerRunSelectQueryTool.js";
 import { registerSummarizeRelationshipsTool } from "./tools/registerSummarizeRelationshipsTool.js";
+import { registerWaitForNotificationTool } from "./tools/registerWaitForNotificationTool.js";
 
 function setupShutdownHandlers() {
   const shutdown = async (signal: string) => {
@@ -50,6 +51,7 @@ async function main() {
   registerRunSelectQueryTool(server);
   registerExplainQueryTool(server);
   registerSummarizeRelationshipsTool(server);
+  registerWaitForNotificationTool(server);
 
   registerPostgresResources(server);
 

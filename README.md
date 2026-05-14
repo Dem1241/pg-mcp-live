@@ -34,6 +34,7 @@ The goal is simple: give MCP-compatible clients useful database context without 
 | `run_select_query` | Runs a guarded read-only SELECT query |
 | `explain_query` | Returns a PostgreSQL EXPLAIN plan |
 | `summarize_relationships` | Returns a compact foreign-key relationship map |
+| `wait_for_notification` | Waits for the next PostgreSQL notification on a channel |
 
 See [`docs/tools.md`](docs/tools.md) for detailed tool behavior.
 

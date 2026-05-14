@@ -4,7 +4,8 @@ import { explainSafeSelectQuery } from "../src/db/explainQuery.js";
 import { checkDatabaseHealth } from "../src/db/health.js";
 import { describeTable, listSchemas, listTables } from "../src/db/introspection.js";
 import { summarizeRelationships } from "../src/db/relationships.js";
-import { closePool } from "../src/db/pool.js";
+import { waitForNotification } from "../src/db/notifications.js";
+import { closePool, pool } from "../src/db/pool.js";
 import { getTableSample } from "../src/db/sampleRows.js";
 import { runSafeSelectQuery } from "../src/db/safeQuery.js";
 
@@ -163,6 +164,30 @@ describe("PostgreSQL integration", () => {
         }),
       ]),
     );
+  });
+
+  it("waits for a PostgreSQL notification", async () => {
+    const channel = "pg_mcp_live_events";
+    const payload = {
+      event: "inventory_changed",
+      productId: 1,
+    };
+
+    const waitPromise = waitForNotification(channel, 5_000);
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
+
+    await pool.query("SELECT pg_notify($1, $2)", [channel, JSON.stringify(payload)]);
+
+    const result = await waitPromise;
+
+    expect(result.channel).toBe(channel);
+    expect(result.timedOut).toBe(false);
+    expect(result.notification?.channel).toBe(channel);
+    expect(result.notification?.payload).toBe(JSON.stringify(payload));
+    expect(result.notification?.parsedPayload).toEqual(payload);
   });
 
   it("returns a safe table sample", async () => {
