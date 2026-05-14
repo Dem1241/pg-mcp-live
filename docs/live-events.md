@@ -48,3 +48,27 @@ The default channel is:
 PostgreSQL notification payloads have a size limit. This demo trigger includes full row data because the demo rows are small.
 
 A production setup should usually send compact event data, such as table name, primary key, operation, and timestamp.
+
+## Persistent event history
+
+For replayable event history, install the event log setup:
+
+    docker exec -i pg-mcp-live-postgres psql -U pgmcp -d pg_mcp_live_demo < examples/event-log.sql
+
+This creates:
+
+    pg_mcp_live_event_log
+
+The trigger will then both emit notifications and store events.
+
+You can query stored events through the `get_recent_events` MCP tool.
+
+Example filters:
+
+    tableName: inventory
+    operation: UPDATE
+    limit: 10
+
+Remove the demo event setup with:
+
+    docker exec -i pg-mcp-live-postgres psql -U pgmcp -d pg_mcp_live_demo < examples/remove-live-events.sql

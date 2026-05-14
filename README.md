@@ -35,6 +35,7 @@ The goal is simple: give MCP-compatible clients useful database context without 
 | `explain_query` | Returns a PostgreSQL EXPLAIN plan |
 | `summarize_relationships` | Returns a compact foreign-key relationship map |
 | `wait_for_notification` | Waits for the next PostgreSQL notification on a channel |
+| `get_recent_events` | Returns recent table-change events from the event log |
 
 See [`docs/tools.md`](docs/tools.md) for detailed tool behavior.
 

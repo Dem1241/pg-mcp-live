@@ -7,6 +7,7 @@ import { registerCheckDatabaseConnectionTool } from "./tools/registerCheckDataba
 import { registerDescribeTableTool } from "./tools/registerDescribeTableTool.js";
 import { registerExplainQueryTool } from "./tools/registerExplainQueryTool.js";
 import { registerGetTableSampleTool } from "./tools/registerGetTableSampleTool.js";
+import { registerGetRecentEventsTool } from "./tools/registerGetRecentEventsTool.js";
 import { registerListSchemasTool } from "./tools/registerListSchemasTool.js";
 import { registerListTablesTool } from "./tools/registerListTablesTool.js";
 import { registerPingTool } from "./tools/registerPingTool.js";
@@ -48,6 +49,7 @@ async function main() {
   registerListTablesTool(server);
   registerDescribeTableTool(server);
   registerGetTableSampleTool(server);
+  registerGetRecentEventsTool(server);
   registerRunSelectQueryTool(server);
   registerExplainQueryTool(server);
   registerSummarizeRelationshipsTool(server);

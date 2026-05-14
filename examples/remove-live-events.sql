@@ -5,3 +5,5 @@ DROP TRIGGER IF EXISTS orders_pg_mcp_live_notify ON orders;
 DROP TRIGGER IF EXISTS order_items_pg_mcp_live_notify ON order_items;
 
 DROP FUNCTION IF EXISTS notify_pg_mcp_live_table_change();
+
+DROP TABLE IF EXISTS pg_mcp_live_event_log;

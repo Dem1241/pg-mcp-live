@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { explainSafeSelectQuery } from "../src/db/explainQuery.js";
@@ -7,6 +8,7 @@ import { summarizeRelationships } from "../src/db/relationships.js";
 import { waitForNotification } from "../src/db/notifications.js";
 import { closePool, pool } from "../src/db/pool.js";
 import { getTableSample } from "../src/db/sampleRows.js";
+import { getRecentEvents } from "../src/db/recentEvents.js";
 import { runSafeSelectQuery } from "../src/db/safeQuery.js";
 
 describe("PostgreSQL integration", () => {
@@ -164,6 +166,43 @@ describe("PostgreSQL integration", () => {
         }),
       ]),
     );
+  });
+
+  it("stores and returns recent table-change events", async () => {
+    const eventLogSql = await readFile(
+      new URL("../examples/event-log.sql", import.meta.url),
+      "utf8",
+    );
+
+    await pool.query(eventLogSql);
+    await pool.query("TRUNCATE TABLE pg_mcp_live_event_log RESTART IDENTITY");
+
+    await pool.query(
+      `
+        UPDATE inventory
+        SET quantity = quantity - 1,
+            updated_at = NOW()
+        WHERE product_id = 1;
+      `,
+    );
+
+    const result = await getRecentEvents({
+      schemaName: "public",
+      tableName: "inventory",
+      operation: "UPDATE",
+      limit: 5,
+    });
+
+    expect(result.eventCount).toBeGreaterThanOrEqual(1);
+    expect(result.events[0]).toEqual(
+      expect.objectContaining({
+        operation: "UPDATE",
+        schemaName: "public",
+        tableName: "inventory",
+      }),
+    );
+    expect(result.events[0]?.oldRow).toHaveProperty("quantity");
+    expect(result.events[0]?.newRow).toHaveProperty("quantity");
   });
 
   it("waits for a PostgreSQL notification", async () => {

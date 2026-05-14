@@ -73,3 +73,22 @@ Example payload sent from PostgreSQL:
 The tool returns either the notification or a timeout result.
 
 This is the first live-event building block. Later features can build on it for table-change monitoring, event history, and Kafka bridging.
+
+## `get_recent_events`
+
+Returns recent table-change events from `pg_mcp_live_event_log`.
+
+Optional filters:
+
+    schemaName
+    tableName
+    operation
+    limit
+
+Example use:
+
+    Show me the last 10 inventory events.
+    Show recent UPDATE events.
+    Show recent changes in the public schema.
+
+This tool requires the event log setup from `examples/event-log.sql`.
