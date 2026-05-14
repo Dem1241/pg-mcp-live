@@ -29,10 +29,12 @@ The goal is simple: give MCP-compatible clients useful database context without 
 | `check_database_connection` | Tests the PostgreSQL connection |
 | `list_schemas` | Lists exposed schemas |
 | `list_tables` | Lists tables in exposed schemas |
-| `describe_table` | Returns columns, keys, constraints, indexes, and table stats |
-| `get_table_sample` | Returns a limited sample of rows from a table |
+| `describe_table` | Returns table metadata |
+| `get_table_sample` | Returns sample rows |
 | `run_select_query` | Runs a guarded read-only SELECT query |
-| `explain_query` | Returns a PostgreSQL EXPLAIN plan for a guarded query |
+| `explain_query` | Returns a PostgreSQL EXPLAIN plan |
+
+See [`docs/tools.md`](docs/tools.md) for detailed tool behavior.
 
 ## MCP resources
 
