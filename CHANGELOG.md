@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented here.
 
+## 0.2.0 - Live events and event history
+
+### Added
+
+- PostgreSQL LISTEN/NOTIFY listener tool
+- `wait_for_notification` MCP tool
+- optional demo table-change triggers
+- persistent event log table setup
+- `get_recent_events` MCP tool
+- `summarize_recent_activity` MCP tool
+- live-event documentation
+- event history documentation
+- integration tests for notifications and event history
+
+### Changed
+
+- Updated README tool list for live-event features
+- Expanded MCP tool documentation
+
+### Notes
+
+This release adds the first live database event layer. It supports both immediate notification listening and replayable event history through the optional demo event-log setup.
+
 ## 0.1.0 - Initial release
 
 ### Added
@@ -43,4 +66,4 @@ All notable changes to this project will be documented here.
 
 ### Notes
 
-This is the first public project milestone. The server is read-only by design, but it should not yet be treated as a complete production security boundary.
+First public project milestone. The server is read-only by design, but it should not yet be treated as a complete production security boundary.

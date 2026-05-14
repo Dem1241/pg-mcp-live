@@ -355,10 +355,11 @@ Core MCP server with PostgreSQL introspection and guarded read-only query tools.
 
 ### v0.2.0
 
-- index metadata
-- table size estimates
-- richer relationship summaries
-- integration tests against the demo database
+- PostgreSQL LISTEN/NOTIFY support
+- optional demo table-change triggers
+- persistent event log
+- recent event replay
+- recent activity summaries
 
 ### v0.3.0
 

@@ -1,6 +1,6 @@
 {
   "name": "pg-mcp-live",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A safe MCP server for inspecting, querying, and monitoring PostgreSQL databases.",
   "main": "dist/index.js",
   "scripts": {
