@@ -4,6 +4,7 @@ import { closePool } from "./db/pool.js";
 import { createMcpServer } from "./server/createMcpServer.js";
 import { registerCheckDatabaseConnectionTool } from "./tools/registerCheckDatabaseConnectionTool.js";
 import { registerDescribeTableTool } from "./tools/registerDescribeTableTool.js";
+import { registerGetTableSampleTool } from "./tools/registerGetTableSampleTool.js";
 import { registerListSchemasTool } from "./tools/registerListSchemasTool.js";
 import { registerListTablesTool } from "./tools/registerListTablesTool.js";
 import { registerPingTool } from "./tools/registerPingTool.js";
@@ -41,6 +42,7 @@ async function main() {
   registerListSchemasTool(server);
   registerListTablesTool(server);
   registerDescribeTableTool(server);
+  registerGetTableSampleTool(server);
 
   const transport = new StdioServerTransport();
 
