@@ -3,6 +3,9 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { closePool } from "./db/pool.js";
 import { createMcpServer } from "./server/createMcpServer.js";
 import { registerCheckDatabaseConnectionTool } from "./tools/registerCheckDatabaseConnectionTool.js";
+import { registerDescribeTableTool } from "./tools/registerDescribeTableTool.js";
+import { registerListSchemasTool } from "./tools/registerListSchemasTool.js";
+import { registerListTablesTool } from "./tools/registerListTablesTool.js";
 import { registerPingTool } from "./tools/registerPingTool.js";
 
 function setupShutdownHandlers() {
@@ -35,6 +38,9 @@ async function main() {
 
   registerPingTool(server);
   registerCheckDatabaseConnectionTool(server);
+  registerListSchemasTool(server);
+  registerListTablesTool(server);
+  registerDescribeTableTool(server);
 
   const transport = new StdioServerTransport();
 
