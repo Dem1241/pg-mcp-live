@@ -5,6 +5,7 @@ import { explainSafeSelectQuery } from "../src/db/explainQuery.js";
 import { checkDatabaseHealth } from "../src/db/health.js";
 import { describeTable, listSchemas, listTables } from "../src/db/introspection.js";
 import { summarizeRelationships } from "../src/db/relationships.js";
+import { checkFeatureSupport } from "../src/db/features.js";
 import { waitForNotification } from "../src/db/notifications.js";
 import { closePool, pool } from "../src/db/pool.js";
 import { getTableSample } from "../src/db/sampleRows.js";
@@ -13,8 +14,19 @@ import { summarizeRecentActivity } from "../src/db/eventActivity.js";
 import { runSafeSelectQuery } from "../src/db/safeQuery.js";
 
 describe("PostgreSQL integration", () => {
+  let removeLiveEventsSql: string;
+  let eventLogSql: string;
+
   beforeAll(async () => {
     await checkDatabaseHealth();
+    removeLiveEventsSql = await readFile(
+      new URL("../examples/remove-live-events.sql", import.meta.url),
+      "utf8",
+    );
+    eventLogSql = await readFile(
+      new URL("../examples/event-log.sql", import.meta.url),
+      "utf8",
+    );
   }, 10_000);
 
   afterAll(async () => {
@@ -47,6 +59,29 @@ describe("PostgreSQL integration", () => {
         "inventory",
         "orders",
         "order_items",
+      ]),
+    );
+  });
+
+  it("reports default feature support before optional setup", async () => {
+    await pool.query(removeLiveEventsSql);
+
+    const support = await checkFeatureSupport();
+
+    expect(support.databaseConnection.ok).toBe(true);
+    expect(support.schemas.allowed).toEqual(["public"]);
+    expect(support.eventHistory.installed).toBe(false);
+    expect(support.liveNotifications.channel).toBe("pg_mcp_live_events");
+    expect(support.liveNotifications.triggerFunctionInstalled).toBe(false);
+    expect(support.liveNotifications.triggerCount).toBe(0);
+    expect(support.liveNotifications.coveredTables).toEqual([]);
+    expect(support.liveNotifications.missingTables).toEqual(
+      expect.arrayContaining([
+        "public.customers",
+        "public.products",
+        "public.inventory",
+        "public.orders",
+        "public.order_items",
       ]),
     );
   });
@@ -187,13 +222,22 @@ describe("PostgreSQL integration", () => {
   });
 
   it("summarizes recent table-change activity", async () => {
-    const eventLogSql = await readFile(
-      new URL("../examples/event-log.sql", import.meta.url),
-      "utf8",
-    );
-
     await pool.query(eventLogSql);
     await pool.query("TRUNCATE TABLE pg_mcp_live_event_log RESTART IDENTITY");
+
+    const support = await checkFeatureSupport();
+
+    expect(support.eventHistory.installed).toBe(true);
+    expect(support.liveNotifications.triggerFunctionInstalled).toBe(true);
+    expect(support.liveNotifications.coveredTables).toEqual(
+      expect.arrayContaining([
+        "public.customers",
+        "public.products",
+        "public.inventory",
+        "public.orders",
+        "public.order_items",
+      ]),
+    );
 
     await pool.query(
       `
@@ -249,11 +293,6 @@ describe("PostgreSQL integration", () => {
   });
 
   it("stores and returns recent table-change events", async () => {
-    const eventLogSql = await readFile(
-      new URL("../examples/event-log.sql", import.meta.url),
-      "utf8",
-    );
-
     await pool.query(eventLogSql);
     await pool.query("TRUNCATE TABLE pg_mcp_live_event_log RESTART IDENTITY");
 
@@ -347,6 +386,10 @@ describe("PostgreSQL integration", () => {
     await expect(runSafeSelectQuery("SELECT * FROM products FOR UPDATE")).rejects.toThrow(
       "Row-locking clauses are not allowed.",
     );
+
+    await expect(runSafeSelectQuery("SELECT * FROM information_schema.tables")).rejects.toThrow(
+      'Schema-qualified references are limited to allowed schemas. Found "information_schema".',
+    );
   });
 
   it("returns a safe EXPLAIN plan", async () => {
@@ -359,5 +402,11 @@ describe("PostgreSQL integration", () => {
     expect(result.limit).toBe(5);
     expect(result.plan).toBeTruthy();
     expect(result.executionTimeMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("rejects EXPLAIN requests outside allowed schemas", async () => {
+    await expect(explainSafeSelectQuery("SELECT * FROM pg_catalog.pg_class")).rejects.toThrow(
+      'Schema-qualified references are limited to allowed schemas. Found "pg_catalog".',
+    );
   });
 });

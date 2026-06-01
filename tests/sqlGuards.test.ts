@@ -4,13 +4,13 @@ import { validateReadOnlySelectQuery } from "../src/security/sqlGuards.js";
 
 describe("validateReadOnlySelectQuery", () => {
   it("allows a simple SELECT query", () => {
-    const result = validateReadOnlySelectQuery("SELECT * FROM products");
+    const result = validateReadOnlySelectQuery("SELECT * FROM products", ["public"]);
 
     expect(result.sql).toBe("SELECT * FROM products");
   });
 
   it("allows a SELECT query with a trailing semicolon", () => {
-    const result = validateReadOnlySelectQuery("SELECT * FROM products;");
+    const result = validateReadOnlySelectQuery("SELECT * FROM products;", ["public"]);
 
     expect(result.sql).toBe("SELECT * FROM products");
   });
@@ -21,7 +21,7 @@ describe("validateReadOnlySelectQuery", () => {
         SELECT * FROM orders
       )
       SELECT * FROM recent_orders
-    `);
+    `, ["public"]);
 
     expect(result.sql).toContain("WITH recent_orders");
   });
@@ -85,7 +85,7 @@ describe("validateReadOnlySelectQuery", () => {
     const result = validateReadOnlySelectQuery(`
       SELECT * FROM products
       /* DELETE FROM products */
-    `);
+    `, ["public"]);
 
     expect(result.sql).toContain("SELECT * FROM products");
   });
@@ -94,6 +94,18 @@ describe("validateReadOnlySelectQuery", () => {
     expect(() => validateReadOnlySelectQuery("SELECT * FROM products WHERE id = $1")).toThrow(
       "SQL parameter placeholders are not supported in user queries.",
     );
+  });
+
+  it("allows schema-qualified references inside allowed schemas", () => {
+    const result = validateReadOnlySelectQuery("SELECT * FROM public.products", ["public"]);
+
+    expect(result.sql).toBe("SELECT * FROM public.products");
+  });
+
+  it("rejects schema-qualified references outside allowed schemas", () => {
+    expect(() =>
+      validateReadOnlySelectQuery("SELECT * FROM analytics.products", ["public"]),
+    ).toThrow('Schema-qualified references are limited to allowed schemas. Found "analytics".');
   });
 
   it("rejects very long SQL", () => {

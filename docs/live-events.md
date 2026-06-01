@@ -1,6 +1,7 @@
 # Live events
 
 `pg-mcp-live` can listen for PostgreSQL notifications through the `wait_for_notification` tool.
+You can inspect whether the optional pieces are installed with the `check_feature_support` tool.
 
 The demo database includes an optional trigger script that emits a notification whenever a row changes in one of the demo tables.
 

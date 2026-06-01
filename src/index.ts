@@ -1,9 +1,11 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
+import { checkFeatureSupport, formatStartupDiagnostics } from "./db/features.js";
 import { closePool } from "./db/pool.js";
 import { registerPostgresResources } from "./resources/registerPostgresResources.js";
 import { createMcpServer } from "./server/createMcpServer.js";
 import { registerCheckDatabaseConnectionTool } from "./tools/registerCheckDatabaseConnectionTool.js";
+import { registerCheckFeatureSupportTool } from "./tools/registerCheckFeatureSupportTool.js";
 import { registerDescribeTableTool } from "./tools/registerDescribeTableTool.js";
 import { registerExplainQueryTool } from "./tools/registerExplainQueryTool.js";
 import { registerGetTableSampleTool } from "./tools/registerGetTableSampleTool.js";
@@ -39,6 +41,22 @@ function setupShutdownHandlers() {
   });
 }
 
+async function logStartupDiagnostics() {
+  try {
+    const featureSupport = await checkFeatureSupport();
+    const diagnostics = formatStartupDiagnostics(featureSupport);
+
+    console.error("pg-mcp-live startup diagnostics:");
+
+    for (const line of diagnostics.lines) {
+      console.error(`- ${line}`);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown startup diagnostics error";
+    console.error(`pg-mcp-live startup diagnostics unavailable: ${message}`);
+  }
+}
+
 async function main() {
   setupShutdownHandlers();
 
@@ -46,6 +64,7 @@ async function main() {
 
   registerPingTool(server);
   registerCheckDatabaseConnectionTool(server);
+  registerCheckFeatureSupportTool(server);
   registerListSchemasTool(server);
   registerListTablesTool(server);
   registerDescribeTableTool(server);
@@ -62,6 +81,7 @@ async function main() {
   const transport = new StdioServerTransport();
 
   console.error("pg-mcp-live MCP server starting on stdio...");
+  await logStartupDiagnostics();
   await server.connect(transport);
 }
 

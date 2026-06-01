@@ -8,6 +8,18 @@ Checks whether the MCP server is running.
 
 Checks whether the server can connect to the configured PostgreSQL database.
 
+## `check_feature_support`
+
+Reports which optional database features are installed.
+
+The result includes:
+
+    allowed schemas
+    whether pg_mcp_live_event_log exists
+    whether the live notification trigger function exists
+    which allowed base tables currently have notification triggers
+    which allowed base tables are still missing notification triggers
+
 ## `list_schemas`
 
 Lists PostgreSQL schemas exposed by `PG_MCP_ALLOWED_SCHEMAS`.

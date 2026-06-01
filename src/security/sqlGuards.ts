@@ -24,6 +24,10 @@ export type ValidatedSelectQuery = {
   sql: string;
 };
 
+function normalizeAllowedSchemas(allowedSchemas: string[]) {
+  return new Set(allowedSchemas.map((schemaName) => schemaName.toLowerCase()));
+}
+
 function stripTrailingSemicolon(sql: string) {
   return sql.trim().replace(/;+$/, "").trim();
 }
@@ -181,7 +185,30 @@ function ensureNoForbiddenKeywords(sql: string) {
   }
 }
 
-export function validateReadOnlySelectQuery(sql: string): ValidatedSelectQuery {
+function ensureOnlyAllowedSchemas(sql: string, allowedSchemas: string[]) {
+  const sanitized = sanitizeSqlForKeywordScanning(sql);
+  const normalizedAllowedSchemas = normalizeAllowedSchemas(allowedSchemas);
+  const schemaReferencePattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\.\s*[a-zA-Z_][a-zA-Z0-9_]*\b/g;
+
+  for (const match of sanitized.matchAll(schemaReferencePattern)) {
+    const schemaName = match[1]?.toLowerCase();
+
+    if (!schemaName) {
+      continue;
+    }
+
+    if (!normalizedAllowedSchemas.has(schemaName)) {
+      throw new Error(
+        `Schema-qualified references are limited to allowed schemas. Found "${match[1]}".`,
+      );
+    }
+  }
+}
+
+export function validateReadOnlySelectQuery(
+  sql: string,
+  allowedSchemas: string[] = ["public"],
+): ValidatedSelectQuery {
   const trimmed = sql.trim();
 
   if (!trimmed) {
@@ -195,6 +222,7 @@ export function validateReadOnlySelectQuery(sql: string): ValidatedSelectQuery {
   ensureNoMultipleStatements(trimmed);
   ensureAllowedLeadingKeyword(trimmed);
   ensureNoForbiddenKeywords(trimmed);
+  ensureOnlyAllowedSchemas(trimmed, allowedSchemas);
 
   return {
     // This validator is a pragmatic guardrail, not a substitute for a least-privileged DB role.

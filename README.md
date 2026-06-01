@@ -27,6 +27,7 @@ The goal is simple: give MCP-compatible clients useful database context without 
 | --- | --- |
 | `ping` | Checks whether the server is running |
 | `check_database_connection` | Tests the PostgreSQL connection |
+| `check_feature_support` | Reports which optional database features are installed |
 | `list_schemas` | Lists exposed schemas |
 | `list_tables` | Lists base tables in exposed schemas |
 | `describe_table` | Returns table metadata |
@@ -82,6 +83,7 @@ The server also uses:
 - statement timeouts
 - maximum row limits
 - schema allowlists
+- restricted PostgreSQL `search_path` for query tools
 - identifier validation
 - safe table-name quoting
 
@@ -138,6 +140,7 @@ npm run dev
 ```
 
 The server uses stdio transport. When started directly, it will wait for an MCP client.
+On startup it also prints a short diagnostics summary to stderr describing database connectivity and optional live-event feature support.
 
 ## Testing with MCP Inspector
 
@@ -160,6 +163,12 @@ Useful first checks:
 ```json
 {
   "tool": "check_database_connection"
+}
+```
+
+```json
+{
+  "tool": "check_feature_support"
 }
 ```
 
