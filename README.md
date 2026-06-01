@@ -43,6 +43,28 @@ The goal is simple: give MCP-compatible clients useful database context without 
 
 See [`docs/tools.md`](docs/tools.md) for detailed tool behavior.
 
+Tool responses use a consistent JSON envelope:
+
+```json
+{
+  "ok": true,
+  "summary": "Listed 1 allowed schema.",
+  "data": {}
+}
+```
+
+Errors use:
+
+```json
+{
+  "ok": false,
+  "summary": "Failed to list schemas.",
+  "error": {
+    "message": "..."
+  }
+}
+```
+
 ## MCP resources
 
 | Resource | Description |

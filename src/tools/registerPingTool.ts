@@ -1,6 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { createSuccessToolResponse } from "./response.js";
+
 export function registerPingTool(server: McpServer) {
   server.registerTool(
     "ping",
@@ -10,14 +12,7 @@ export function registerPingTool(server: McpServer) {
       inputSchema: z.object({}),
     },
     async () => {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: "pong",
-          },
-        ],
-      };
+      return createSuccessToolResponse("Server is reachable.", { message: "pong" });
     },
   );
 }

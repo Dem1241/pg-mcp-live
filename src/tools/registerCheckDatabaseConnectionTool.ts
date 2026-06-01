@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { checkDatabaseHealth } from "../db/health.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerCheckDatabaseConnectionTool(server: McpServer) {
   server.registerTool(
@@ -14,27 +15,13 @@ export function registerCheckDatabaseConnectionTool(server: McpServer) {
     async () => {
       try {
         const health = await checkDatabaseHealth();
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(health, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          `Connected to database "${health.currentDatabase}" as "${health.currentUser}".`,
+          health,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown database connection error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Database connection failed: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse("Database connection failed.", message);
       }
     },
   );

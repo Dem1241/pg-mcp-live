@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { listSchemas } from "../db/introspection.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerListSchemasTool(server: McpServer) {
   server.registerTool(
@@ -14,27 +15,10 @@ export function registerListSchemasTool(server: McpServer) {
     async () => {
       try {
         const schemas = await listSchemas();
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(schemas, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(`Listed ${schemas.length} allowed schema(s).`, schemas);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to list schemas: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse("Failed to list schemas.", message);
       }
     },
   );

@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { listEventSources } from "../db/features.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerListEventSourcesTool(server: McpServer) {
   server.registerTool(
@@ -15,27 +16,13 @@ export function registerListEventSourcesTool(server: McpServer) {
     async () => {
       try {
         const eventSources = await listEventSources();
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(eventSources, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          `Checked notification coverage for ${eventSources.sources.length} event source(s).`,
+          eventSources,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown event source error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to list event sources: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse("Failed to list event sources.", message);
       }
     },
   );

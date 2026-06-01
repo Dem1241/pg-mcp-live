@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { summarizeRelationships } from "../db/relationships.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerSummarizeRelationshipsTool(server: McpServer) {
   server.registerTool(
@@ -17,27 +18,13 @@ export function registerSummarizeRelationshipsTool(server: McpServer) {
     async ({ schemaName }) => {
       try {
         const summary = await summarizeRelationships(schemaName);
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(summary, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          `Summarized ${summary.relationshipCount} relationship(s) across ${summary.schemas.length} schema(s).`,
+          summary,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to summarize relationships: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse("Failed to summarize relationships.", message);
       }
     },
   );

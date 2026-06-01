@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { summarizeRecentActivity } from "../db/eventActivity.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerSummarizeRecentActivityTool(server: McpServer) {
   server.registerTool(
@@ -27,27 +28,13 @@ export function registerSummarizeRecentActivityTool(server: McpServer) {
           sinceMinutes,
           limit,
         });
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          `Summarized ${result.totalEvents} recent event(s) across ${result.byTable.length} table(s).`,
+          result,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to summarize recent activity: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse("Failed to summarize recent activity.", message);
       }
     },
   );

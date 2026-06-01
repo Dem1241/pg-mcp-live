@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { waitForNotification } from "../db/notifications.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerWaitForNotificationTool(server: McpServer) {
   server.registerTool(
@@ -18,27 +19,15 @@ export function registerWaitForNotificationTool(server: McpServer) {
     async ({ channel, timeoutMs }) => {
       try {
         const result = await waitForNotification(channel, timeoutMs);
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          result.timedOut
+            ? `Timed out waiting for notifications on "${result.channel}".`
+            : `Received a notification on "${result.channel}".`,
+          result,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to wait for notification: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse("Failed to wait for notification.", message);
       }
     },
   );

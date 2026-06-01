@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { tailRecentEvents } from "../db/recentEvents.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerTailRecentEventsTool(server: McpServer) {
   server.registerTool(
@@ -29,27 +30,15 @@ export function registerTailRecentEventsTool(server: McpServer) {
           timeoutMs,
           limit,
         });
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          result.timedOut
+            ? `Timed out waiting for matching events on "${result.channel}".`
+            : `Received ${result.eventCount} matching event(s) on "${result.channel}".`,
+          result,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to tail recent events: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse("Failed to tail recent events.", message);
       }
     },
   );

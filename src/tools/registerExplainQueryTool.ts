@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { explainSafeSelectQuery } from "../db/explainQuery.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerExplainQueryTool(server: McpServer) {
   server.registerTool(
@@ -18,27 +19,13 @@ export function registerExplainQueryTool(server: McpServer) {
     async ({ sql, limit }) => {
       try {
         const result = await explainSafeSelectQuery(sql, limit);
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          `Generated EXPLAIN plan for a guarded query with row limit ${result.limit}.`,
+          result,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Query explanation rejected or failed: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse("Query explanation rejected or failed.", message);
       }
     },
   );

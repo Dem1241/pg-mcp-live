@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { runSafeSelectQuery } from "../db/safeQuery.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerRunSelectQueryTool(server: McpServer) {
   server.registerTool(
@@ -18,27 +19,13 @@ export function registerRunSelectQueryTool(server: McpServer) {
     async ({ sql, limit }) => {
       try {
         const result = await runSafeSelectQuery(sql, limit);
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          `Executed guarded SELECT query and returned ${result.rowCount} row(s).`,
+          result,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Query rejected or failed: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse("Query rejected or failed.", message);
       }
     },
   );

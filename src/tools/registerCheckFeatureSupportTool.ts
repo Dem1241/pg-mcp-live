@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { checkFeatureSupport } from "../db/features.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerCheckFeatureSupportTool(server: McpServer) {
   server.registerTool(
@@ -15,27 +16,13 @@ export function registerCheckFeatureSupportTool(server: McpServer) {
     async () => {
       try {
         const featureSupport = await checkFeatureSupport();
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(featureSupport, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          `Feature support checked for ${featureSupport.schemas.allowed.length} allowed schema(s).`,
+          featureSupport,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown feature detection error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Feature support check failed: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse("Feature support check failed.", message);
       }
     },
   );

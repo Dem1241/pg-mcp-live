@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { getRecentEvents } from "../db/recentEvents.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerGetRecentEventsTool(server: McpServer) {
   server.registerTool(
@@ -25,27 +26,13 @@ export function registerGetRecentEventsTool(server: McpServer) {
           operation,
           limit,
         });
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          `Fetched ${result.eventCount} recent event(s)${tableName ? ` for "${tableName}"` : ""}.`,
+          result,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to get recent events: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse("Failed to get recent events.", message);
       }
     },
   );

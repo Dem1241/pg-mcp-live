@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { getTableSample } from "../db/sampleRows.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerGetTableSampleTool(server: McpServer) {
   server.registerTool(
@@ -19,27 +20,13 @@ export function registerGetTableSampleTool(server: McpServer) {
     async ({ schemaName, tableName, limit }) => {
       try {
         const sample = await getTableSample(schemaName, tableName, limit);
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(sample, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          `Fetched ${sample.rowCount} sample row(s) from "${schemaName}.${tableName}".`,
+          sample,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to get table sample: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse(`Failed to get table sample for "${schemaName}.${tableName}".`, message);
       }
     },
   );

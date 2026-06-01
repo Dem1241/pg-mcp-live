@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { describeTable } from "../db/introspection.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerDescribeTableTool(server: McpServer) {
   server.registerTool(
@@ -18,27 +19,13 @@ export function registerDescribeTableTool(server: McpServer) {
     async ({ schemaName, tableName }) => {
       try {
         const tableDescription = await describeTable(schemaName, tableName);
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(tableDescription, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          `Described table "${schemaName}.${tableName}" with ${tableDescription.columns.length} column(s).`,
+          tableDescription,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to describe table: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse(`Failed to describe table "${schemaName}.${tableName}".`, message);
       }
     },
   );

@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { listTables } from "../db/introspection.js";
+import { createErrorToolResponse, createSuccessToolResponse } from "./response.js";
 
 export function registerListTablesTool(server: McpServer) {
   server.registerTool(
@@ -16,27 +17,13 @@ export function registerListTablesTool(server: McpServer) {
     async ({ schemaName }) => {
       try {
         const tables = await listTables(schemaName);
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(tables, null, 2),
-            },
-          ],
-        };
+        return createSuccessToolResponse(
+          `Listed ${tables.length} table(s)${schemaName ? ` in schema "${schemaName}"` : ""}.`,
+          tables,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to list tables: ${message}`,
-            },
-          ],
-        };
+        return createErrorToolResponse("Failed to list tables.", message);
       }
     },
   );
