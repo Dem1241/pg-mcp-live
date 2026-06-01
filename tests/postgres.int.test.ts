@@ -51,6 +51,23 @@ describe("PostgreSQL integration", () => {
     );
   });
 
+  it("lists only base tables", async () => {
+    await pool.query(`
+      CREATE OR REPLACE VIEW public.pgmcp_test_products_view AS
+      SELECT id, sku
+      FROM products;
+    `);
+
+    try {
+      const tables = await listTables("public");
+      const tableNames = tables.map((table) => table.tableName);
+
+      expect(tableNames).not.toContain("pgmcp_test_products_view");
+    } finally {
+      await pool.query("DROP VIEW IF EXISTS public.pgmcp_test_products_view");
+    }
+  });
+
   it("describes table columns, primary keys, and foreign keys", async () => {
     const table = await describeTable("public", "order_items");
 

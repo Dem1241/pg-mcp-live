@@ -14,7 +14,7 @@ Lists PostgreSQL schemas exposed by `PG_MCP_ALLOWED_SCHEMAS`.
 
 ## `list_tables`
 
-Lists tables in exposed schemas.
+Lists base tables in exposed schemas.
 
 ## `describe_table`
 
@@ -78,6 +78,8 @@ This is the first live-event building block. Later features can build on it for 
 
 Returns recent table-change events from `pg_mcp_live_event_log`.
 
+If the event log has not been installed yet, the tool returns a setup error that points to `examples/event-log.sql`.
+
 Optional filters:
 
     schemaName
@@ -96,6 +98,8 @@ This tool requires the event log setup from `examples/event-log.sql`.
 ## `summarize_recent_activity`
 
 Summarizes recent table-change events from `pg_mcp_live_event_log`.
+
+If the event log has not been installed yet, the tool returns a setup error that points to `examples/event-log.sql`.
 
 Optional filters:
 

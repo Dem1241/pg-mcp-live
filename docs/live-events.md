@@ -62,6 +62,7 @@ This creates:
 The trigger will then both emit notifications and store events.
 
 You can query stored events through the `get_recent_events` MCP tool.
+If the event log has not been installed, the live-event history tools return a setup error that points back to `examples/event-log.sql`.
 
 Example filters:
 

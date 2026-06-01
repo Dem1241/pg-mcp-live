@@ -1,4 +1,4 @@
-import { env } from "../config/env.js";
+import { getAllowedSchemas } from "./guards.js";
 import { pool } from "./pool.js";
 
 export type DatabaseSchema = {
@@ -146,14 +146,6 @@ function normalizeColumnNames(columnNames: string[] | string | null): string[] {
     .filter(Boolean);
 }
 
-function ensureSchemaIsAllowed(schemaName: string) {
-  if (!env.PG_MCP_ALLOWED_SCHEMAS.includes(schemaName)) {
-    throw new Error(
-      `Schema "${schemaName}" is not allowed. Allowed schemas: ${env.PG_MCP_ALLOWED_SCHEMAS.join(", ")}`,
-    );
-  }
-}
-
 export async function listSchemas(): Promise<DatabaseSchema[]> {
   const result = await pool.query<SchemaRow>(
     `
@@ -162,7 +154,7 @@ export async function listSchemas(): Promise<DatabaseSchema[]> {
       WHERE schema_name = ANY($1::text[])
       ORDER BY schema_name;
     `,
-    [env.PG_MCP_ALLOWED_SCHEMAS],
+    [getAllowedSchemas()],
   );
 
   return result.rows.map((row) => ({
@@ -171,9 +163,7 @@ export async function listSchemas(): Promise<DatabaseSchema[]> {
 }
 
 export async function listTables(schemaName?: string): Promise<DatabaseTable[]> {
-  if (schemaName) {
-    ensureSchemaIsAllowed(schemaName);
-  }
+  const schemas = getAllowedSchemas(schemaName);
 
   const result = await pool.query<TableRow>(
     `
@@ -183,10 +173,11 @@ export async function listTables(schemaName?: string): Promise<DatabaseTable[]> 
         table_type
       FROM information_schema.tables
       WHERE table_schema = ANY($1::text[])
+        AND table_type = 'BASE TABLE'
         AND ($2::text IS NULL OR table_schema = $2)
       ORDER BY table_schema, table_name;
     `,
-    [env.PG_MCP_ALLOWED_SCHEMAS, schemaName ?? null],
+    [schemas, schemaName ?? null],
   );
 
   return result.rows.map((row) => ({
@@ -453,7 +444,7 @@ export async function describeTable(
   schemaName: string,
   tableName: string,
 ): Promise<TableDescription> {
-  ensureSchemaIsAllowed(schemaName);
+  getAllowedSchemas(schemaName);
   await assertTableExists(schemaName, tableName);
 
   const [

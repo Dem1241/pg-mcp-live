@@ -1,5 +1,6 @@
-import { env } from "../config/env.js";
 import { assertSafeIdentifier } from "../security/identifiers.js";
+import { assertEventLogAvailable } from "./features.js";
+import { getAllowedSchemas, normalizeLimit } from "./guards.js";
 import { pool } from "./pool.js";
 
 export type EventOperation = "INSERT" | "UPDATE" | "DELETE";
@@ -42,40 +43,18 @@ type EventLogRow = {
   new_row: Record<string, unknown> | null;
 };
 
-function ensureSchemaIsAllowed(schemaName: string) {
-  if (!env.PG_MCP_ALLOWED_SCHEMAS.includes(schemaName)) {
-    throw new Error(
-      `Schema "${schemaName}" is not allowed. Allowed schemas: ${env.PG_MCP_ALLOWED_SCHEMAS.join(", ")}`,
-    );
-  }
-}
-
-function normalizeLimit(limit: number | undefined) {
-  if (limit === undefined) {
-    return Math.min(20, env.PG_MCP_MAX_ROWS);
-  }
-
-  if (!Number.isInteger(limit) || limit <= 0) {
-    throw new Error("Limit must be a positive integer.");
-  }
-
-  return Math.min(limit, env.PG_MCP_MAX_ROWS);
-}
-
 export async function getRecentEvents(
   options: GetRecentEventsOptions = {},
 ): Promise<GetRecentEventsResult> {
-  const safeLimit = normalizeLimit(options.limit);
+  await assertEventLogAvailable();
 
-  if (options.schemaName) {
-    ensureSchemaIsAllowed(options.schemaName);
-  }
+  const safeLimit = normalizeLimit(options.limit, 20);
 
   if (options.tableName) {
     assertSafeIdentifier(options.tableName, "table name");
   }
 
-  const schemas = options.schemaName ? [options.schemaName] : env.PG_MCP_ALLOWED_SCHEMAS;
+  const schemas = getAllowedSchemas(options.schemaName);
 
   const result = await pool.query<EventLogRow>(
     `

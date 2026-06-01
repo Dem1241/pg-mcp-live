@@ -1,4 +1,4 @@
-import { env } from "../config/env.js";
+import { getAllowedSchemas } from "./guards.js";
 import { pool } from "./pool.js";
 
 export type DatabaseRelationship = {
@@ -28,22 +28,10 @@ type RelationshipRow = {
   target_column_name: string;
 };
 
-function ensureSchemaIsAllowed(schemaName: string) {
-  if (!env.PG_MCP_ALLOWED_SCHEMAS.includes(schemaName)) {
-    throw new Error(
-      `Schema "${schemaName}" is not allowed. Allowed schemas: ${env.PG_MCP_ALLOWED_SCHEMAS.join(", ")}`,
-    );
-  }
-}
-
 export async function summarizeRelationships(
   schemaName?: string,
 ): Promise<RelationshipSummary> {
-  if (schemaName) {
-    ensureSchemaIsAllowed(schemaName);
-  }
-
-  const schemas = schemaName ? [schemaName] : env.PG_MCP_ALLOWED_SCHEMAS;
+  const schemas = getAllowedSchemas(schemaName);
 
   const result = await pool.query<RelationshipRow>(
     `

@@ -9,7 +9,7 @@ export function registerSummarizeRecentActivityTool(server: McpServer) {
     {
       title: "Summarize Recent Activity",
       description:
-        "Summarize recent PostgreSQL table-change events by table, operation, and latest event.",
+        "Summarize recent PostgreSQL table-change events by table, operation, and latest event. Requires examples/event-log.sql to be installed.",
       inputSchema: z.object({
         schemaName: z.string().min(1).optional(),
         tableName: z.string().min(1).optional(),

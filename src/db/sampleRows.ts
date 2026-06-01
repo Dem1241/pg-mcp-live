@@ -1,5 +1,5 @@
-import { env } from "../config/env.js";
 import { assertSafeIdentifier, quoteQualifiedTableName } from "../security/identifiers.js";
+import { ensureSchemaIsAllowed, normalizeLimit } from "./guards.js";
 import { pool } from "./pool.js";
 
 export type TableSample = {
@@ -9,14 +9,6 @@ export type TableSample = {
   rowCount: number;
   rows: Record<string, unknown>[];
 };
-
-function ensureSchemaIsAllowed(schemaName: string) {
-  if (!env.PG_MCP_ALLOWED_SCHEMAS.includes(schemaName)) {
-    throw new Error(
-      `Schema "${schemaName}" is not allowed. Allowed schemas: ${env.PG_MCP_ALLOWED_SCHEMAS.join(", ")}`,
-    );
-  }
-}
 
 async function assertTableExists(schemaName: string, tableName: string) {
   const result = await pool.query<{ exists: boolean }>(
@@ -37,18 +29,6 @@ async function assertTableExists(schemaName: string, tableName: string) {
   }
 }
 
-function normalizeLimit(limit: number | undefined) {
-  if (limit === undefined) {
-    return Math.min(10, env.PG_MCP_MAX_ROWS);
-  }
-
-  if (!Number.isInteger(limit) || limit <= 0) {
-    throw new Error("Limit must be a positive integer.");
-  }
-
-  return Math.min(limit, env.PG_MCP_MAX_ROWS);
-}
-
 export async function getTableSample(
   schemaName: string,
   tableName: string,
@@ -61,7 +41,7 @@ export async function getTableSample(
 
   await assertTableExists(schemaName, tableName);
 
-  const safeLimit = normalizeLimit(limit);
+  const safeLimit = normalizeLimit(limit, 10);
   const qualifiedTableName = quoteQualifiedTableName(schemaName, tableName);
 
   const result = await pool.query<Record<string, unknown>>(

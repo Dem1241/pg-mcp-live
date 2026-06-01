@@ -9,7 +9,7 @@ export function registerGetRecentEventsTool(server: McpServer) {
     {
       title: "Get Recent Events",
       description:
-        "Return recent PostgreSQL table-change events from the pg-mcp-live event log.",
+        "Return recent PostgreSQL table-change events from the pg-mcp-live event log. Requires examples/event-log.sql to be installed.",
       inputSchema: z.object({
         schemaName: z.string().min(1).optional(),
         tableName: z.string().min(1).optional(),

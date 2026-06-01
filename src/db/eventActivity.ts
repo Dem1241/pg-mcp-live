@@ -1,5 +1,6 @@
-import { env } from "../config/env.js";
 import { assertSafeIdentifier } from "../security/identifiers.js";
+import { assertEventLogAvailable } from "./features.js";
+import { getAllowedSchemas, normalizeLimit } from "./guards.js";
 import { pool } from "./pool.js";
 import type { EventOperation, RecentEvent } from "./recentEvents.js";
 
@@ -71,26 +72,6 @@ type LatestEventRow = {
   new_row: Record<string, unknown> | null;
 };
 
-function ensureSchemaIsAllowed(schemaName: string) {
-  if (!env.PG_MCP_ALLOWED_SCHEMAS.includes(schemaName)) {
-    throw new Error(
-      `Schema "${schemaName}" is not allowed. Allowed schemas: ${env.PG_MCP_ALLOWED_SCHEMAS.join(", ")}`,
-    );
-  }
-}
-
-function normalizeLimit(limit: number | undefined) {
-  if (limit === undefined) {
-    return Math.min(10, env.PG_MCP_MAX_ROWS);
-  }
-
-  if (!Number.isInteger(limit) || limit <= 0) {
-    throw new Error("Limit must be a positive integer.");
-  }
-
-  return Math.min(limit, env.PG_MCP_MAX_ROWS);
-}
-
 function normalizeSinceMinutes(sinceMinutes: number | undefined) {
   if (sinceMinutes === undefined) {
     return 60;
@@ -106,16 +87,14 @@ function normalizeSinceMinutes(sinceMinutes: number | undefined) {
 export async function summarizeRecentActivity(
   options: SummarizeRecentActivityOptions = {},
 ): Promise<RecentActivitySummary> {
-  if (options.schemaName) {
-    ensureSchemaIsAllowed(options.schemaName);
-  }
+  await assertEventLogAvailable();
 
   if (options.tableName) {
     assertSafeIdentifier(options.tableName, "table name");
   }
 
-  const schemas = options.schemaName ? [options.schemaName] : env.PG_MCP_ALLOWED_SCHEMAS;
-  const safeLimit = normalizeLimit(options.limit);
+  const schemas = getAllowedSchemas(options.schemaName);
+  const safeLimit = normalizeLimit(options.limit, 10);
   const safeSinceMinutes = normalizeSinceMinutes(options.sinceMinutes);
   const since = new Date(Date.now() - safeSinceMinutes * 60 * 1000);
 

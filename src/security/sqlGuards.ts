@@ -197,6 +197,7 @@ export function validateReadOnlySelectQuery(sql: string): ValidatedSelectQuery {
   ensureNoForbiddenKeywords(trimmed);
 
   return {
+    // This validator is a pragmatic guardrail, not a substitute for a least-privileged DB role.
     sql: stripTrailingSemicolon(trimmed),
   };
 }

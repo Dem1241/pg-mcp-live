@@ -2,6 +2,7 @@ import type { QueryResultRow } from "pg";
 
 import { env } from "../config/env.js";
 import { validateReadOnlySelectQuery } from "../security/sqlGuards.js";
+import { normalizeLimit } from "./guards.js";
 import { pool } from "./pool.js";
 
 export type SafeQueryResult = {
@@ -13,24 +14,12 @@ export type SafeQueryResult = {
   executionTimeMs: number;
 };
 
-function normalizeLimit(limit: number | undefined) {
-  if (limit === undefined) {
-    return env.PG_MCP_MAX_ROWS;
-  }
-
-  if (!Number.isInteger(limit) || limit <= 0) {
-    throw new Error("Limit must be a positive integer.");
-  }
-
-  return Math.min(limit, env.PG_MCP_MAX_ROWS);
-}
-
 export async function runSafeSelectQuery(
   sql: string,
   limit?: number,
 ): Promise<SafeQueryResult> {
   const validated = validateReadOnlySelectQuery(sql);
-  const safeLimit = normalizeLimit(limit);
+  const safeLimit = normalizeLimit(limit, env.PG_MCP_MAX_ROWS);
 
   const client = await pool.connect();
   const startedAt = Date.now();

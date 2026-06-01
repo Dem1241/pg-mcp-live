@@ -28,7 +28,7 @@ The goal is simple: give MCP-compatible clients useful database context without 
 | `ping` | Checks whether the server is running |
 | `check_database_connection` | Tests the PostgreSQL connection |
 | `list_schemas` | Lists exposed schemas |
-| `list_tables` | Lists tables in exposed schemas |
+| `list_tables` | Lists base tables in exposed schemas |
 | `describe_table` | Returns table metadata |
 | `get_table_sample` | Returns sample rows |
 | `run_select_query` | Runs a guarded read-only SELECT query |
@@ -45,12 +45,12 @@ See [`docs/tools.md`](docs/tools.md) for detailed tool behavior.
 | Resource | Description |
 | --- | --- |
 | `postgres://schemas` | Lists exposed schemas |
-| `postgres://schema/{schemaName}` | Lists tables in a schema |
+| `postgres://schema/{schemaName}` | Lists base tables in a schema |
 | `postgres://table/{schemaName}/{tableName}` | Returns table metadata, indexes, constraints, and stats |
 
 ## Safety model
 
-The server is read-only by design.
+The server is read-only by design, but it is not a complete database sandbox.
 
 User-provided SQL is checked before execution. The query engine blocks common write, admin, and destructive operations, including:
 
@@ -86,6 +86,8 @@ The server also uses:
 - safe table-name quoting
 
 This project is still early. Do not treat it as a complete production security boundary yet.
+
+In particular, the SQL guard is based on blocking common dangerous patterns before running a query inside a read-only transaction. It does not fully constrain which `SELECT`-callable database functions a role may access. Use a least-privileged PostgreSQL role and treat database permissions as the primary security boundary.
 
 ## Requirements
 
