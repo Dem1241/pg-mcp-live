@@ -11,11 +11,13 @@ import { registerExplainQueryTool } from "./tools/registerExplainQueryTool.js";
 import { registerGetTableSampleTool } from "./tools/registerGetTableSampleTool.js";
 import { registerGetRecentEventsTool } from "./tools/registerGetRecentEventsTool.js";
 import { registerListSchemasTool } from "./tools/registerListSchemasTool.js";
+import { registerListEventSourcesTool } from "./tools/registerListEventSourcesTool.js";
 import { registerListTablesTool } from "./tools/registerListTablesTool.js";
 import { registerPingTool } from "./tools/registerPingTool.js";
 import { registerRunSelectQueryTool } from "./tools/registerRunSelectQueryTool.js";
 import { registerSummarizeRelationshipsTool } from "./tools/registerSummarizeRelationshipsTool.js";
 import { registerSummarizeRecentActivityTool } from "./tools/registerSummarizeRecentActivityTool.js";
+import { registerTailRecentEventsTool } from "./tools/registerTailRecentEventsTool.js";
 import { registerWaitForNotificationTool } from "./tools/registerWaitForNotificationTool.js";
 
 function setupShutdownHandlers() {
@@ -65,6 +67,7 @@ async function main() {
   registerPingTool(server);
   registerCheckDatabaseConnectionTool(server);
   registerCheckFeatureSupportTool(server);
+  registerListEventSourcesTool(server);
   registerListSchemasTool(server);
   registerListTablesTool(server);
   registerDescribeTableTool(server);
@@ -74,6 +77,7 @@ async function main() {
   registerExplainQueryTool(server);
   registerSummarizeRelationshipsTool(server);
   registerSummarizeRecentActivityTool(server);
+  registerTailRecentEventsTool(server);
   registerWaitForNotificationTool(server);
 
   registerPostgresResources(server);

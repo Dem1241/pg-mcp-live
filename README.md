@@ -28,6 +28,7 @@ The goal is simple: give MCP-compatible clients useful database context without 
 | `ping` | Checks whether the server is running |
 | `check_database_connection` | Tests the PostgreSQL connection |
 | `check_feature_support` | Reports which optional database features are installed |
+| `list_event_sources` | Lists allowed tables and whether they emit live notifications |
 | `list_schemas` | Lists exposed schemas |
 | `list_tables` | Lists base tables in exposed schemas |
 | `describe_table` | Returns table metadata |
@@ -38,6 +39,7 @@ The goal is simple: give MCP-compatible clients useful database context without 
 | `wait_for_notification` | Waits for the next PostgreSQL notification on a channel |
 | `get_recent_events` | Returns recent table-change events from the event log |
 | `summarize_recent_activity` | Summarizes recent table-change activity |
+| `tail_recent_events` | Waits for the next matching live event and returns its event-log rows |
 
 See [`docs/tools.md`](docs/tools.md) for detailed tool behavior.
 

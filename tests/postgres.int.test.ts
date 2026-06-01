@@ -6,16 +6,38 @@ import { checkDatabaseHealth } from "../src/db/health.js";
 import { describeTable, listSchemas, listTables } from "../src/db/introspection.js";
 import { summarizeRelationships } from "../src/db/relationships.js";
 import { checkFeatureSupport } from "../src/db/features.js";
+import { listEventSources } from "../src/db/features.js";
 import { waitForNotification } from "../src/db/notifications.js";
 import { closePool, pool } from "../src/db/pool.js";
 import { getTableSample } from "../src/db/sampleRows.js";
 import { getRecentEvents } from "../src/db/recentEvents.js";
+import { tailRecentEvents } from "../src/db/recentEvents.js";
 import { summarizeRecentActivity } from "../src/db/eventActivity.js";
 import { runSafeSelectQuery } from "../src/db/safeQuery.js";
 
 describe("PostgreSQL integration", () => {
   let removeLiveEventsSql: string;
   let eventLogSql: string;
+
+  async function removeLiveEventsSetup() {
+    await pool.query(removeLiveEventsSql);
+  }
+
+  async function installEventLogSetup() {
+    await pool.query(eventLogSql);
+  }
+
+  async function resetEventLog() {
+    await installEventLogSetup();
+    await pool.query("TRUNCATE TABLE pg_mcp_live_event_log RESTART IDENTITY");
+    await pool.query(`
+      UPDATE inventory
+      SET quantity = 25,
+          updated_at = NOW()
+      WHERE product_id = 1;
+    `);
+    await pool.query("TRUNCATE TABLE pg_mcp_live_event_log RESTART IDENTITY");
+  }
 
   beforeAll(async () => {
     await checkDatabaseHealth();
@@ -64,7 +86,7 @@ describe("PostgreSQL integration", () => {
   });
 
   it("reports default feature support before optional setup", async () => {
-    await pool.query(removeLiveEventsSql);
+    await removeLiveEventsSetup();
 
     const support = await checkFeatureSupport();
 
@@ -82,6 +104,28 @@ describe("PostgreSQL integration", () => {
         "public.inventory",
         "public.orders",
         "public.order_items",
+      ]),
+    );
+  });
+
+  it("lists event sources before optional setup", async () => {
+    await removeLiveEventsSetup();
+
+    const eventSources = await listEventSources();
+
+    expect(eventSources.channel).toBe("pg_mcp_live_events");
+    expect(eventSources.triggerFunctionInstalled).toBe(false);
+    expect(eventSources.coveredSourceCount).toBe(0);
+    expect(eventSources.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          tableName: "public.customers",
+          notificationsEnabled: false,
+        }),
+        expect.objectContaining({
+          tableName: "public.inventory",
+          notificationsEnabled: false,
+        }),
       ]),
     );
   });
@@ -222,8 +266,7 @@ describe("PostgreSQL integration", () => {
   });
 
   it("summarizes recent table-change activity", async () => {
-    await pool.query(eventLogSql);
-    await pool.query("TRUNCATE TABLE pg_mcp_live_event_log RESTART IDENTITY");
+    await resetEventLog();
 
     const support = await checkFeatureSupport();
 
@@ -236,6 +279,22 @@ describe("PostgreSQL integration", () => {
         "public.inventory",
         "public.orders",
         "public.order_items",
+      ]),
+    );
+
+    const eventSources = await listEventSources();
+
+    expect(eventSources.coveredSourceCount).toBeGreaterThanOrEqual(5);
+    expect(eventSources.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          tableName: "public.customers",
+          notificationsEnabled: true,
+        }),
+        expect.objectContaining({
+          tableName: "public.order_items",
+          notificationsEnabled: true,
+        }),
       ]),
     );
 
@@ -293,8 +352,7 @@ describe("PostgreSQL integration", () => {
   });
 
   it("stores and returns recent table-change events", async () => {
-    await pool.query(eventLogSql);
-    await pool.query("TRUNCATE TABLE pg_mcp_live_event_log RESTART IDENTITY");
+    await resetEventLog();
 
     await pool.query(
       `
@@ -346,6 +404,117 @@ describe("PostgreSQL integration", () => {
     expect(result.notification?.channel).toBe(channel);
     expect(result.notification?.payload).toBe(JSON.stringify(payload));
     expect(result.notification?.parsedPayload).toEqual(payload);
+  });
+
+  it("times out when no PostgreSQL notification arrives", async () => {
+    const result = await waitForNotification("pg_mcp_live_events", 150);
+
+    expect(result.channel).toBe("pg_mcp_live_events");
+    expect(result.timedOut).toBe(true);
+    expect(result.notification).toBeNull();
+  });
+
+  it("tails recent events for the next matching table change", async () => {
+    await resetEventLog();
+
+    const tailPromise = tailRecentEvents({
+      schemaName: "public",
+      tableName: "inventory",
+      operation: "UPDATE",
+      timeoutMs: 5_000,
+      limit: 5,
+    });
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
+
+    await pool.query(
+      `
+        UPDATE inventory
+        SET quantity = quantity - 1,
+            updated_at = NOW()
+        WHERE product_id = 1;
+      `,
+    );
+
+    const result = await tailPromise;
+
+    expect(result.timedOut).toBe(false);
+    expect(result.channel).toBe("pg_mcp_live_events");
+    expect(result.eventCount).toBeGreaterThanOrEqual(1);
+    expect(result.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: "UPDATE",
+          schemaName: "public",
+          tableName: "inventory",
+        }),
+      ]),
+    );
+    expect(result.notification?.channel).toBe("pg_mcp_live_events");
+  });
+
+  it("keeps waiting past unrelated notifications until a matching event arrives", async () => {
+    await resetEventLog();
+
+    const tailPromise = tailRecentEvents({
+      schemaName: "public",
+      tableName: "inventory",
+      operation: "UPDATE",
+      timeoutMs: 5_000,
+      limit: 5,
+    });
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
+
+    await pool.query(
+      `
+        UPDATE products
+        SET description = CONCAT(description, ' updated'),
+            created_at = created_at
+        WHERE id = 1;
+      `,
+    );
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
+
+    await pool.query(
+      `
+        UPDATE inventory
+        SET quantity = quantity - 1,
+            updated_at = NOW()
+        WHERE product_id = 1;
+      `,
+    );
+
+    const result = await tailPromise;
+
+    expect(result.timedOut).toBe(false);
+    expect(result.events.every((event) => event.tableName === "inventory")).toBe(true);
+    expect(result.events.every((event) => event.operation === "UPDATE")).toBe(true);
+  });
+
+  it("times out when no matching tailed event arrives", async () => {
+    await resetEventLog();
+
+    const result = await tailRecentEvents({
+      schemaName: "public",
+      tableName: "inventory",
+      operation: "DELETE",
+      timeoutMs: 150,
+      limit: 5,
+    });
+
+    expect(result.channel).toBe("pg_mcp_live_events");
+    expect(result.timedOut).toBe(true);
+    expect(result.eventCount).toBe(0);
+    expect(result.events).toEqual([]);
+    expect(result.notification).toBeNull();
   });
 
   it("returns a safe table sample", async () => {

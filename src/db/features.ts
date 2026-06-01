@@ -35,6 +35,20 @@ export type StartupDiagnosticsSummary = {
   lines: string[];
 };
 
+export type EventSource = {
+  tableName: string;
+  notificationsEnabled: boolean;
+};
+
+export type EventSourceSummary = {
+  channel: string;
+  triggerFunctionInstalled: boolean;
+  coveredSourceCount: number;
+  missingSourceCount: number;
+  setupSql: string;
+  sources: EventSource[];
+};
+
 const EVENT_LOG_SETUP_ERROR =
   "Live event history is not installed. Run examples/event-log.sql to create pg_mcp_live_event_log.";
 
@@ -199,4 +213,25 @@ export function formatStartupDiagnostics(featureSupport: FeatureSupport): Startu
   }
 
   return { lines };
+}
+
+export async function listEventSources(): Promise<EventSourceSummary> {
+  const featureSupport = await checkFeatureSupport();
+  const coveredTables = new Set(featureSupport.liveNotifications.coveredTables);
+  const sourceTableNames = [
+    ...featureSupport.liveNotifications.coveredTables,
+    ...featureSupport.liveNotifications.missingTables,
+  ].sort((left, right) => left.localeCompare(right));
+
+  return {
+    channel: featureSupport.liveNotifications.channel,
+    triggerFunctionInstalled: featureSupport.liveNotifications.triggerFunctionInstalled,
+    coveredSourceCount: featureSupport.liveNotifications.coveredTables.length,
+    missingSourceCount: featureSupport.liveNotifications.missingTables.length,
+    setupSql: featureSupport.liveNotifications.setupSql,
+    sources: sourceTableNames.map((tableName) => ({
+      tableName,
+      notificationsEnabled: coveredTables.has(tableName),
+    })),
+  };
 }

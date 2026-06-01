@@ -90,6 +90,15 @@ describe("validateReadOnlySelectQuery", () => {
     expect(result.sql).toContain("SELECT * FROM products");
   });
 
+  it("ignores forbidden keywords inside dollar-quoted strings", () => {
+    const result = validateReadOnlySelectQuery(
+      "SELECT $$DROP TABLE products$$ AS warning",
+      ["public"],
+    );
+
+    expect(result.sql).toBe("SELECT $$DROP TABLE products$$ AS warning");
+  });
+
   it("rejects SQL parameter placeholders", () => {
     expect(() => validateReadOnlySelectQuery("SELECT * FROM products WHERE id = $1")).toThrow(
       "SQL parameter placeholders are not supported in user queries.",
@@ -106,6 +115,16 @@ describe("validateReadOnlySelectQuery", () => {
     expect(() =>
       validateReadOnlySelectQuery("SELECT * FROM analytics.products", ["public"]),
     ).toThrow('Schema-qualified references are limited to allowed schemas. Found "analytics".');
+  });
+
+  it("allows schema-qualified references across multiple allowed schemas", () => {
+    const result = validateReadOnlySelectQuery(
+      "SELECT * FROM analytics.products UNION ALL SELECT * FROM public.products",
+      ["public", "analytics"],
+    );
+
+    expect(result.sql).toContain("analytics.products");
+    expect(result.sql).toContain("public.products");
   });
 
   it("rejects very long SQL", () => {

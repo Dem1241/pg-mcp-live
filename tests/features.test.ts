@@ -113,3 +113,49 @@ describe("formatStartupDiagnostics", () => {
     ]);
   });
 });
+
+describe("listEventSources", () => {
+  it("returns a table-by-table notification summary", async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ exists: false }] })
+      .mockResolvedValueOnce({ rows: [{ exists: true }] })
+      .mockResolvedValueOnce({
+        rows: [
+          { schema_name: "public", table_name: "customers" },
+          { schema_name: "public", table_name: "products" },
+          { schema_name: "public", table_name: "orders" },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          { qualified_table_name: "public.customers", trigger_count: "1" },
+          { qualified_table_name: "public.orders", trigger_count: "1" },
+        ],
+      });
+
+    const { listEventSources } = await import("../src/db/features.js");
+
+    await expect(listEventSources()).resolves.toEqual({
+      channel: "pg_mcp_live_events",
+      triggerFunctionInstalled: true,
+      coveredSourceCount: 2,
+      missingSourceCount: 1,
+      setupSql: "examples/live-events.sql",
+      sources: [
+        {
+          tableName: "public.customers",
+          notificationsEnabled: true,
+        },
+        {
+          tableName: "public.orders",
+          notificationsEnabled: true,
+        },
+        {
+          tableName: "public.products",
+          notificationsEnabled: false,
+        },
+      ],
+    });
+  });
+});

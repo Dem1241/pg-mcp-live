@@ -20,6 +20,17 @@ The result includes:
     which allowed base tables currently have notification triggers
     which allowed base tables are still missing notification triggers
 
+## `list_event_sources`
+
+Lists allowed base tables and whether each one currently emits live notifications.
+
+The result includes:
+
+    notification channel
+    whether the trigger function is installed
+    per-table notification coverage
+    setup SQL path for enabling notifications
+
 ## `list_schemas`
 
 Lists PostgreSQL schemas exposed by `PG_MCP_ALLOWED_SCHEMAS`.
@@ -104,6 +115,23 @@ Example use:
     Show me the last 10 inventory events.
     Show recent UPDATE events.
     Show recent changes in the public schema.
+
+This tool requires the event log setup from `examples/event-log.sql`.
+
+## `tail_recent_events`
+
+Waits for the next matching live event and then returns the corresponding event-log rows.
+
+This tool combines notification waiting with a bounded catch-up query against `pg_mcp_live_event_log`.
+
+Optional filters:
+
+    schemaName
+    tableName
+    operation
+    channel
+    timeoutMs
+    limit
 
 This tool requires the event log setup from `examples/event-log.sql`.
 

@@ -2,6 +2,7 @@
 
 `pg-mcp-live` can listen for PostgreSQL notifications through the `wait_for_notification` tool.
 You can inspect whether the optional pieces are installed with the `check_feature_support` tool.
+You can also list table-by-table notification coverage with the `list_event_sources` tool.
 
 The demo database includes an optional trigger script that emits a notification whenever a row changes in one of the demo tables.
 
@@ -64,6 +65,7 @@ The trigger will then both emit notifications and store events.
 
 You can query stored events through the `get_recent_events` MCP tool.
 If the event log has not been installed, the live-event history tools return a setup error that points back to `examples/event-log.sql`.
+If you want to wait for the next matching event and immediately fetch its event-log rows, use `tail_recent_events`.
 
 Example filters:
 
