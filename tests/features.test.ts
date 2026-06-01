@@ -159,3 +159,86 @@ describe("listEventSources", () => {
     });
   });
 });
+
+describe("evaluateSelfCheck", () => {
+  it("passes when all optional live-event features are installed", async () => {
+    const { evaluateSelfCheck } = await import("../src/db/features.js");
+
+    expect(
+      evaluateSelfCheck({
+        databaseConnection: {
+          ok: true,
+        },
+        schemas: {
+          allowed: ["public"],
+        },
+        eventHistory: {
+          installed: true,
+          tableName: "pg_mcp_live_event_log",
+          setupSql: "examples/event-log.sql",
+        },
+        liveNotifications: {
+          channel: "pg_mcp_live_events",
+          triggerFunctionInstalled: true,
+          triggerCount: 5,
+          coveredTables: [
+            "public.customers",
+            "public.products",
+            "public.inventory",
+            "public.orders",
+            "public.order_items",
+          ],
+          missingTables: [],
+          setupSql: "examples/live-events.sql",
+        },
+      }),
+    ).toEqual({
+      status: "pass",
+      summary: "pg-mcp-live self-check passed",
+      checks: [
+        "Database connection: ok",
+        "Allowed schemas: public",
+        "Event history: installed (pg_mcp_live_event_log)",
+        "Live notifications: installed on 5 table(s)",
+      ],
+    });
+  });
+
+  it("warns when optional live-event features are missing", async () => {
+    const { evaluateSelfCheck } = await import("../src/db/features.js");
+
+    expect(
+      evaluateSelfCheck({
+        databaseConnection: {
+          ok: true,
+        },
+        schemas: {
+          allowed: ["public"],
+        },
+        eventHistory: {
+          installed: false,
+          tableName: "pg_mcp_live_event_log",
+          setupSql: "examples/event-log.sql",
+        },
+        liveNotifications: {
+          channel: "pg_mcp_live_events",
+          triggerFunctionInstalled: false,
+          triggerCount: 0,
+          coveredTables: [],
+          missingTables: ["public.customers", "public.products"],
+          setupSql: "examples/live-events.sql",
+        },
+      }),
+    ).toEqual({
+      status: "warn",
+      summary: "pg-mcp-live self-check passed with warnings",
+      checks: [
+        "Database connection: ok",
+        "Allowed schemas: public",
+        "Event history: missing (examples/event-log.sql)",
+        "Live notifications: missing (examples/live-events.sql)",
+        "Tables without notification triggers: public.customers, public.products",
+      ],
+    });
+  });
+});

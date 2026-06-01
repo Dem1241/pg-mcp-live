@@ -133,6 +133,7 @@ Run checks:
 npm test
 npm run typecheck
 npm run build
+npm run self-check
 ```
 
 Start the MCP server:
@@ -143,6 +144,16 @@ npm run dev
 
 The server uses stdio transport. When started directly, it will wait for an MCP client.
 On startup it also prints a short diagnostics summary to stderr describing database connectivity and optional live-event feature support.
+
+## Self-check
+
+Run:
+
+```bash
+npm run self-check
+```
+
+This verifies database connectivity and reports whether optional live-event features are installed. The command exits with status `0` when the core setup works, and prints warnings if optional live-event pieces are missing.
 
 ## Testing with MCP Inspector
 

@@ -49,6 +49,14 @@ export type EventSourceSummary = {
   sources: EventSource[];
 };
 
+export type SelfCheckStatus = "pass" | "warn";
+
+export type SelfCheckResult = {
+  status: SelfCheckStatus;
+  summary: string;
+  checks: string[];
+};
+
 const EVENT_LOG_SETUP_ERROR =
   "Live event history is not installed. Run examples/event-log.sql to create pg_mcp_live_event_log.";
 
@@ -233,5 +241,46 @@ export async function listEventSources(): Promise<EventSourceSummary> {
       tableName,
       notificationsEnabled: coveredTables.has(tableName),
     })),
+  };
+}
+
+export function evaluateSelfCheck(featureSupport: FeatureSupport): SelfCheckResult {
+  const checks = [
+    "Database connection: ok",
+    `Allowed schemas: ${featureSupport.schemas.allowed.join(", ") || "(none)"}`,
+  ];
+
+  let status: SelfCheckStatus = "pass";
+
+  if (featureSupport.eventHistory.installed) {
+    checks.push(`Event history: installed (${featureSupport.eventHistory.tableName})`);
+  } else {
+    status = "warn";
+    checks.push(`Event history: missing (${featureSupport.eventHistory.setupSql})`);
+  }
+
+  if (featureSupport.liveNotifications.triggerFunctionInstalled) {
+    checks.push(
+      `Live notifications: installed on ${featureSupport.liveNotifications.coveredTables.length} table(s)`,
+    );
+  } else {
+    status = "warn";
+    checks.push(`Live notifications: missing (${featureSupport.liveNotifications.setupSql})`);
+  }
+
+  if (featureSupport.liveNotifications.missingTables.length > 0) {
+    status = "warn";
+    checks.push(
+      `Tables without notification triggers: ${featureSupport.liveNotifications.missingTables.join(", ")}`,
+    );
+  }
+
+  return {
+    status,
+    summary:
+      status === "pass"
+        ? "pg-mcp-live self-check passed"
+        : "pg-mcp-live self-check passed with warnings",
+    checks,
   };
 }
